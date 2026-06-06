@@ -54,7 +54,11 @@ for sql in sql_list:
                 print(f"{f_name} からParquet作成中")
                 # テーブル名を作成
                 source_name = f_name.replace('.csv', '')
-                table_name = source_name.upper()
+                if path["filename"] == "olist_mql.zip":
+                    table_name = 'MQL_' + source_name.upper()
+                else 
+                    table_name = source_name.upper()    
+                             
                 # zipファイルをバイト形式で読み込み
                 bytes_buffer = zip.read(f_name)
             
