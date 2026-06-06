@@ -34,7 +34,11 @@ with ZipFile(zipfile_buffer) as zip:
         pl_df = pl.read_csv(io.BytesIO(bytes_buffer))
         bytes_io = io.BytesIO() # ファイルライクオブジェクトの枠を作成
         pl_df.write_parquet(bytes_io) # polars dataframeのwrite_parquet関数を使い、ファイルライクオブジェクトにデータを.parquet形式で保存
-        
+
+        # [Snowflakeは自動で実施するので不必要] => バイト型ファイルを書き切った後、カーソルが最後尾になるので冒頭(0)にリセット, 慣習的な処理
+        bytes_io.seek(0)
+
+        # Uploads local files to the stage via a file stream.
         session.file.put_stream(
             input_stream = bytes_io,
             stage_location = f'@"KAGGLE_OLIST"."PUBLIC"."KAGGLE_OLIST"/{source_name}.parquet',
