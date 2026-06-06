@@ -56,7 +56,7 @@ for sql in sql_list:
                 source_name = f_name.replace('.csv', '')
                 if path["filename"] == "olist_mql.zip":
                     table_name = 'MQL_' + source_name.upper()
-                else 
+                else :
                     table_name = source_name.upper()    
                              
                 # zipファイルをバイト形式で読み込み
