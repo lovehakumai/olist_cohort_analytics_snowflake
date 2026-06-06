@@ -14,7 +14,7 @@ stage_abs_path_list = [
     {
         "file_path": '@"KAGGLE_OLIST_DEV"."PUBLIC"."KAGGLE_OLIST"/kaggle_olist.zip',
         "db": "KAGGLE_OLIST_DEV",
-        "filename": "kaggle_olist"
+        "filename": "kaggle_olist.zip"
         },
     {
         'file_path': '@"KAGGLE_OLIST_DEV"."PUBLIC"."KAGGLE_OLIST"/olist_mql.zip',
@@ -23,12 +23,12 @@ stage_abs_path_list = [
     },
     {
         'file_path': '@"KAGGLE_OLIST_PROD"."PUBLIC"."KAGGLE_OLIST"/olist_mql.zip',
-        "db": "KAGGLE_OLIST_DEV",
-        "filename": "kaggle_olist"
+        "db": "KAGGLE_OLIST_PROD",
+        "filename": "kaggle_olist.zip"
     },
     {
         'file_path': '@"KAGGLE_OLIST_PROD"."PUBLIC"."KAGGLE_OLIST"/olist_mql.zip',
-        "db": "KAGGLE_OLIST_DEV",
+        "db": "KAGGLE_OLIST_PROD",
         "filename": "olist_mql.zip"
     }
 ]
@@ -62,6 +62,10 @@ for sql in sql_list:
                 # ファイルライクオブジェクト(BytesIO)に変換してParquetファイルとして対象のステージに格納
                 pl_df = pl.read_csv(io.BytesIO(bytes_buffer))
                 bytes_io = io.BytesIO() # ファイルライクオブジェクトの枠を作成
+                
+                # カラム名が小文字で登録されることを避けるためにplでヘッダーを大文字に変換する
+                pl_df.columns = [col.upper() for col in pl_df.columns]
+                
                 pl_df.write_parquet(bytes_io) # polars dataframeのwrite_parquet関数を使い、ファイルライクオブジェクトにデータを.parquet形式で保存
         
                 # [Snowflakeは自動で実施するので不必要] => バイト型ファイルを書き切った後、カーソルが最後尾になるので冒頭(0)にリセット, 慣習的な処理
