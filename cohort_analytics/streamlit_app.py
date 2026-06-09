@@ -3,34 +3,26 @@ from snowflake.snowpark.context import get_active_session
 
 st.title("🇧🇷🛍️ OLIST : Cohort Analytics")
 
-session = get_active_session()
-session.sql('USE SCHEMA KAGGLE_OLIST_DEV.DBT_DEV').collect()
-df = session.sql('SELECT * FROM FCT_CUSTOMER_COHORT_RETENTION').to_pandas()
-st.markdown("---")
-exclude_m0 = st.checkbox("EXCLUDE FIRST MONTH")
-if exclude_m0:
-    df = df[df['MONTHS_AFTER_FIRST_PURCHASE'] > 0]
-st.markdown("---")
-st.header("⭐️NUM OF CUSTOMERS")
-st.line_chart(
-    data=df, 
-    x = "MONTHS_AFTER_FIRST_PURCHASE", 
-    y = "UCNT_RETAINED",
-    color = "FIRST_PURCHASE_MONTH"
-)
+@st.cache_data(max_entries = 3)
+def get_data():
+    session = get_active_session()
+    session.sql('USE SCHEMA KAGGLE_OLIST_DEV.DBT_DEV').collect()
+    fact_df = session.sql('SELECT * FROM FCT_CUSTOMER_COHORT_RETENTION_FULL').to_pandas()
+    return fact_df
+fact_df = get_data()
 
-st.header("⭐️NUM OF ORDERS")
-st.line_chart(
-    data=df, 
-    x = "MONTHS_AFTER_FIRST_PURCHASE", 
-    y = "ORDER_CNT_RETAINED",
-    color = "FIRST_PURCHASE_MONTH"
-)
+filter_cols = [
+ 'FIRST_PURCHASE_MONTH',
+ 'LAST_PURCHASE_MONTH',
+ 'TOTAL_ORDERS',
+ 'CUSTOMER_CITY',
+ 'CUSTOMER_STATE',
+ 'FIRST_PAYMENT_TYPE',
+ 'CUSTOMER_STATUS']
 
-st.header("⭐️SUM OF AMOUNT")
-st.line_chart(
-    data=df, 
-    x = "MONTHS_AFTER_FIRST_PURCHASE", 
-    y = "REVENUE_RETAINED",
-    color = "FIRST_PURCHASE_MONTH"
-)
+with st.sidebar:
+    st_filter_exec = False 
+    
+    st_filter_col = st.selectbox("Chose the dimension of filter", filter_cols)
+    filter_vals = sorted(fact_df[st_filter_col].unique())
+    st_filter_val = st.selectbox("VALUE :", filter_vals)

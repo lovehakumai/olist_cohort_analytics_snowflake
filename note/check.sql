@@ -1,4 +1,38 @@
+-- 1. ACCOUNT_ADMIN（最高管理者）に切り替える
+USE ROLE ACCOUNTADMIN;
+
+-- 2. Pythonの公式倉庫（pypi.orgと関連サーバー）への通信ルートを定義する
+CREATE OR REPLACE NETWORK RULE pypi_network_rule
+  MODE = 'EGRESS'
+  TYPE = 'HOST_PORT'
+  VALUE_LIST = ('pypi.org', 'files.pythonhosted.org', 'pypi.python.org');
+
+-- 3. 通信許可証（EAI）を作成する
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION pypi_access_integration
+  ALLOWED_NETWORK_RULES = (pypi_network_rule)
+  ENABLED = TRUE;
+
+-- 4. あなたのStreamlitアプリに対して、この通信許可証の使用を許可する
+-- (※「アプリ名」の部分は、ご自身の実際のStreamlitアプリの名前に書き換えてください)
+ALTER STREAMLIT KAGGLE_OLIST_DEV.DBT_DEV.アプリ名 
+  SET EXTERNAL_ACCESS_INTEGRATIONS = (pypi_access_integration);
+
+
+
 SELECT 
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY total_orders) AS q25
+    , PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY total_orders) AS q50
+    , PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY total_orders) AS q75
+    , PERCENTILE_CONT(1.0) WITHIN GROUP (ORDER BY total_orders) AS q100
+    , MAX(first_purchase_month)
+FROM FCT_CUSTOMER_COHORT_RETENTION_FULL 
+;
+
+SELECT first_purchase_at::DATE FROM FCT_CUSTOMER_COHORT_RETENTION_FULL LIMIT 10
+;
+
+SELECT * FROM DIM_CUSTOMER_LIFECYCLE;
+SELECT * FROM KAGGLE_OLIST_DEV.DBT_DEV.FCT_CUSTOMER_COHORT_RETENTION_FULL WHERE customer_unique_id='0280c3bae373e59fd0f564cf9b0188a1';
 SELECT 
     MIN(FIRST_PURCHASE_MONTH)
     , MAX(FIRST_PURCHASE_MONTH)
