@@ -1,5 +1,7 @@
 import streamlit as st
 from snowflake.snowpark.context import get_active_session
+import pandas as pd
+
 st.set_page_config(layout="wide")
 
 st.title("🇧🇷🛍️ OLIST : Cohort Analytics")
@@ -38,8 +40,24 @@ def filter_data(col, val, df, dim):
             })
         .reset_index()
     )
+    # 経過月数 x 指定粒度での累積和を算出して、0M時点での人数で割る
+    filtered_df = filtered_df.sort_values(by = [dim, 'MONTHS_AFTER_FST_PURCHASE'])
+    filtered_df[f'{dim}_cumsum'] = filtered_df.groupby(dim)['MONTHLY_REVENUE'].cumsum()
+    denom_df = (
+        tmp_df[tmp_df["MONTHS_AFTER_FST_PURCHASE"] == 0]
+        .groupby(dim)
+        .agg(uu_cus_id = ("CUSTOMER_UNIQUE_ID", "nunique"))
+        .reset_index()
+    )
+    merged_clv_df = pd.merge(filtered_df, denom_df, on = dim, how = 'left')
+    merged_clv_df["cus_clv"] = merged_clv_df[f"{dim}_cumsum"] / merged_clv_df["uu_cus_id"]
 
-    return filtered_df, major_dict
+    result = {
+        "filtered_df": filtered_df, 
+        "major_dict": major_dict,
+        "clv_df": merged_clv_df
+    }
+    return result
 
 fact_df = get_data()
 
@@ -64,7 +82,7 @@ try:
     col1, col2 = st.columns(2)
     with col1: 
         st_filter_col = st.selectbox("Chose the dimension of filter", filter_cols)
-        filter_vals = ["ALL"] + sorted(fact_df[st_filter_col].unique())
+        filter_vals = ["ALL"] + sorted(fact_df[st_filter_col].dropna().unique())
     with col2: 
         st_filter_val = st.selectbox("VALUE :", filter_vals)
     
@@ -79,8 +97,13 @@ try:
     if st.session_state.is_executed:
         st.write("---")
         st.subheader("📈 Interactive Line Chart")
-        dimension_col = st.selectbox("Chose Dimension Column for Chart legend", filter_cols, key="chart_dim_selector")
-        filtered_df, major_dict = filter_data(
+        dimension_col = st.selectbox(
+            "Chose Dimension Column for Chart legend"
+            , filter_cols
+            , key="chart_dim_selector"
+        )
+        
+        result_dict = filter_data(
             st.session_state.filter_col, 
             st.session_state.filter_val, 
             fact_df, 
@@ -89,36 +112,41 @@ try:
 
         col1, col2, col3 = st.columns(3)
         with col1: 
-            st.write("👦 CUSTOMER")
-            st.metric(label='',value = f"{major_dict['customer']:,.2f}")
+            st.metric(label='👦 CUSTOMER',value = f"{result_dict['major_dict']['customer']:,.2f}")
             st.line_chart(
-                data = filtered_df
-                
+                data = result_dict["filtered_df"]
                 , x = "MONTHS_AFTER_FST_PURCHASE"
                 , y = "CUSTOMER_UNIQUE_ID"
                 , color = dimension_col
             )
         
         with col2: 
-            st.write("💰 REVENUE")
-            st.metric(label='',value = f"{major_dict['revenue']:,.2f}")
+            st.metric(label='💰 REVENUE',value = f"{result_dict['major_dict']['revenue']:,.2f}")
             st.line_chart(
-                data = filtered_df
+                data = result_dict["filtered_df"]
                 , x = "MONTHS_AFTER_FST_PURCHASE"
                 , y = "MONTHLY_REVENUE"
                 , color = dimension_col
             )
 
         with col3: 
-            st.write("🧾 ORDERS")
-            st.metric(label='',value = f"{major_dict['order']:,.2f}")
+            st.metric(label='🧾 ORDERS',value = f"{result_dict['major_dict']['order']:,.2f}")
             
             st.line_chart(
-                data = filtered_df
+                data = result_dict["filtered_df"]
                 , x = "MONTHS_AFTER_FST_PURCHASE"
                 , y = "MONTHLY_ORDERS"
                 , color = dimension_col
             )
+
+        st.write('---')
+        st.subheader("💰👦Customer Life Value(CLV)")
+        st.line_chart(
+            data = result_dict["clv_df"]
+            , x = "MONTHS_AFTER_FST_PURCHASE"
+            , y = "cus_clv"
+            , color = dimension_col
+        )
 
 except Exception as e:
     st.error(f"Error : {e}")
