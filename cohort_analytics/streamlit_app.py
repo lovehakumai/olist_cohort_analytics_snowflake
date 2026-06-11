@@ -1,5 +1,6 @@
 import streamlit as st
 from snowflake.snowpark.context import get_active_session
+st.set_page_config(layout="wide")
 
 st.title("🇧🇷🛍️ OLIST : Cohort Analytics")
 
@@ -14,14 +15,31 @@ def get_data():
 def filter_data(col, val, df, dim):
     # 指定されたdim x MONTH_AFTER_FST_PURCHASE での人数をUCNT
     if val == 'ALL':
-        filtered_df = df 
+        tmp_df = df.copy()
     else:
-        filtered_df = df[df[col] == val]
+        tmp_df = df[df[col] == val].copy()
+        
+    # 全ての合計数字を取得して返す
+    customer_total = tmp_df['CUSTOMER_UNIQUE_ID'].nunique()
+    revenue_total = tmp_df['MONTHLY_REVENUE'].sum()
+    order_total = tmp_df['MONTHLY_ORDERS'].sum()
+    major_dict = {"customer": customer_total, "revenue": revenue_total, "order": order_total}
 
-    filtered_df = filtered_df[filtered_df["MONTHLY_ORDERS"] > 0]
+    filtered_df = tmp_df[tmp_df["MONTHLY_ORDERS"] > 0]
     filtered_df = filtered_df[filtered_df["MONTHS_AFTER_FST_PURCHASE"] != 0]
-    filtered_df = filtered_df.groupby(["MONTHS_AFTER_FST_PURCHASE", dim])[["CUSTOMER_UNIQUE_ID"]].nunique().reset_index()
-    return filtered_df 
+    filtered_df = (
+
+        filtered_df
+        .groupby(["MONTHS_AFTER_FST_PURCHASE", dim])
+        .agg({
+            "CUSTOMER_UNIQUE_ID" : "nunique",
+            "MONTHLY_REVENUE": "sum",
+            "MONTHLY_ORDERS": "sum"
+            })
+        .reset_index()
+    )
+
+    return filtered_df, major_dict
 
 fact_df = get_data()
 
@@ -61,22 +79,46 @@ try:
     if st.session_state.is_executed:
         st.write("---")
         st.subheader("📈 Interactive Line Chart")
-
         dimension_col = st.selectbox("Chose Dimension Column for Chart legend", filter_cols, key="chart_dim_selector")
-        
-        filtered_df = filter_data(
+        filtered_df, major_dict = filter_data(
             st.session_state.filter_col, 
             st.session_state.filter_val, 
             fact_df, 
             dimension_col
         )
+
+        col1, col2, col3 = st.columns(3)
+        with col1: 
+            st.write("👦 CUSTOMER")
+            st.metric(label='',value = f"{major_dict['customer']:,.2f}")
+            st.line_chart(
+                data = filtered_df
+                
+                , x = "MONTHS_AFTER_FST_PURCHASE"
+                , y = "CUSTOMER_UNIQUE_ID"
+                , color = dimension_col
+            )
         
-        st.line_chart(
-            data = filtered_df
-            , x = "MONTHS_AFTER_FST_PURCHASE"
-            , y = "CUSTOMER_UNIQUE_ID"
-            , color = dimension_col
-        )
+        with col2: 
+            st.write("💰 REVENUE")
+            st.metric(label='',value = f"{major_dict['revenue']:,.2f}")
+            st.line_chart(
+                data = filtered_df
+                , x = "MONTHS_AFTER_FST_PURCHASE"
+                , y = "MONTHLY_REVENUE"
+                , color = dimension_col
+            )
+
+        with col3: 
+            st.write("🧾 ORDERS")
+            st.metric(label='',value = f"{major_dict['order']:,.2f}")
+            
+            st.line_chart(
+                data = filtered_df
+                , x = "MONTHS_AFTER_FST_PURCHASE"
+                , y = "MONTHLY_ORDERS"
+                , color = dimension_col
+            )
 
 except Exception as e:
     st.error(f"Error : {e}")
