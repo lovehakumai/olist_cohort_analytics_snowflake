@@ -10,7 +10,7 @@ st.title("🇧🇷🛍️ OLIST : Cohort Analytics")
 def get_data():
     session = get_active_session()
     session.sql('USE SCHEMA KAGGLE_OLIST_DEV.DBT_DEV').collect()
-    fact_df = session.sql('SELECT * FROM FCT_CUSTOMER_COHORT_RETENTION_FULL').to_pandas()
+    fact_df = session.sql('SELECT * FROM MARTS_FACT_COHORT').to_pandas()
     return fact_df
 
 @st.cache_data(ttl = 600)
@@ -69,7 +69,8 @@ try:
      'CUSTOMER_CITY',
      'CUSTOMER_STATE',
      'FIRST_PAYMENT_TYPE',
-     'CUSTOMER_STATUS']
+     'CUSTOMER_STATUS',
+     'MAIN_PAYMENT_TYPE']
 
     if "is_executed" not in st.session_state:
         st.session_state.is_executed = False
