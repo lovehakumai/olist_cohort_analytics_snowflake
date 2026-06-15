@@ -1,7 +1,7 @@
 # olist_cohort_analytics_snowflake
 
 ## Project Executive Summary
-I deployed this DataAnalytics Environment for the Olist Ecommerce data achieved from Kaggle.
+I deployed this DataAnalytics Environment for the Olist Ecommerce data obtained from Kaggle.
 
 This project includes features below
 
@@ -30,9 +30,12 @@ graph TD
 
 ## Core Engineering Highlights
 ### FileStream for creating Table from Zip
-In the process of creating Table from zipfile in stage, I used filestream to leverage Snowflake machine power. It helps consuming too many credit in compute pool
-### Access from Github
-This project is based on dbt project, dbt will request the authentication via Github Actions. In the github Actions, I used key-pair authentication. This is known as strict secured auth system by using 2 keys public and private. Other hackers can't decrypt easily by mathematical reason.
+First of all, Snowflake can decompress the files compressed into the specific file formats aside from ZIP, such as GZIP, BZ2, BROTLI, ZSTD.
 
-## FinOps : 
-TODO : make script
+Zip is not supported since Zip can hold several files into one.
+My Python Script can create table from zip file.
+
+This Script can create the table from zip file in best way. It calls Snowpark Library which leverage Snowflake's Virtual Data Warehouse. It significantly optimise credit consumption.
+
+### Access from Github
+This implemention enforces the RSA 2048-bit Key-Pair Handshake to bridge between Snowflake and Github Actions and harden the attack surface. The Private key is unencrypted but preserved in Github Secrets which encrypts the variable. Github Actions Runner is temporal server which finishes the handshake ephemerally.
